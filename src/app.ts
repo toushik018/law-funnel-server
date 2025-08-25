@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import { globalErrorHandler, notFoundHandler, setupProcessErrorHandlers } from './errors';
 import { sendSuccess } from './utils/apiResponse';
 import { connectDatabase, checkDatabaseHealth } from './config/db';
@@ -29,7 +30,12 @@ app.use(limiter);
 
 // CORS configuration
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'https://law-funnel-client.vercel.app',
+    origin: [
+        process.env.CLIENT_URL || 'https://law-funnel-client.vercel.app',
+        'https://law-funnel-client.vercel.app',
+        'http://localhost:5173',
+        'http://localhost:3000'
+    ],
     credentials: true
 }));
 
@@ -39,6 +45,18 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Cookie parsing middleware
 app.use(cookieParser());
+
+// Database connection middleware for serverless
+app.use(async (req, res, next) => {
+    if (mongoose.connection.readyState !== 1) {
+        try {
+            await connectDatabase();
+        } catch (error) {
+            console.error('Database connection failed in middleware:', error);
+        }
+    }
+    next();
+});
 
 // Health check endpoint
 app.get('/health', async (req: Request, res: Response) => {
@@ -93,22 +111,30 @@ app.use('/api/cases', caseRoutes);
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
-// Start server
-const server = app.listen(PORT, async () => {
-    console.log(`🚀 Law Funnel Server running on port ${PORT}`);
-    console.log(`📋 Health check: http://localhost:${PORT}/health`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+// Start server - handle both local development and Vercel deployment
+if (process.env.NODE_ENV !== 'production') {
+    // Local development
+    const server = app.listen(PORT, async () => {
+        console.log(`🚀 Law Funnel Server running on port ${PORT}`);
+        console.log(`📋 Health check: http://localhost:${PORT}/health`);
+        console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 
-    // Connect to database
-    try {
-        await connectDatabase();
-        console.log('🗄️  Database connection established');
-    } catch (error) {
-        console.error('❌ Failed to connect to database:', error);
-    }
-});
+        // Connect to database
+        try {
+            await connectDatabase();
+            console.log('🗄️  Database connection established');
+        } catch (error) {
+            console.error('❌ Failed to connect to database:', error);
+        }
+    });
 
-// Setup process error handlers
-setupProcessErrorHandlers(server);
+    // Setup process error handlers
+    setupProcessErrorHandlers(server);
+} else {
+    // Production/Vercel - ensure database connection on startup
+    connectDatabase().catch(error => {
+        console.error('❌ Failed to connect to database in production:', error);
+    });
+}
 
 export default app;
