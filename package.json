@@ -5,6 +5,7 @@
   "main": "dist/app.js",
   "scripts": {
     "build": "tsc",
+    "vercel-build": "tsc",
     "start": "node dist/app.js",
     "dev": "tsx watch src/app.ts",
     "dev:fast": "tsx watch --clear-screen=false src/app.ts",
