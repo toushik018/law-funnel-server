@@ -29,15 +29,29 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // CORS configuration
-app.use(cors({
-    origin: [
-        process.env.CLIENT_URL || 'https://law-funnel-client.vercel.app',
-        'https://law-funnel-client.vercel.app',
-        'http://localhost:5173',
-        'http://localhost:3000'
-    ],
-    credentials: true
-}));
+const corsOptions = {
+    origin: function (origin: string | undefined, callback: Function) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        const allowedOrigins = [
+            'https://law-funnel-client.vercel.app',
+            'http://localhost:5173',
+            'http://localhost:3000',
+            process.env.CLIENT_URL
+        ].filter(Boolean);
+
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        } else {
+            return callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true, // Important: this allows cookies to be sent cross-domain
+    optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
+};
+
+app.use(cors(corsOptions));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));

@@ -167,13 +167,15 @@ export class AuthController {
             const result = await UserService.loginUser({ email, password });
 
             // Set JWT token as httpOnly cookie
-            res.cookie('auth-token', result.token, {
+            const cookieOptions = {
                 httpOnly: true, // Cannot be accessed via JavaScript
-                secure: process.env.NODE_ENV === 'production', // Only over HTTPS in production
-                sameSite: 'lax', // CSRF protection
+                secure: true, // Always use HTTPS in production (Vercel)
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const, // Allow cross-domain in production
                 maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
                 path: '/' // Available on all paths
-            });
+            };
+
+            res.cookie('auth-token', result.token, cookieOptions);
 
             // Return user data without token (token is in cookie)
             sendSuccess(res, { user: result.user }, 'Login successful');
@@ -241,20 +243,19 @@ export class AuthController {
      */
     static async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            // Clear the auth-token cookie
-            res.clearCookie('auth-token', {
+            const cookieOptions = {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
+                secure: true,
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
                 path: '/'
-            });
+            };
+
+            // Clear the auth-token cookie
+            res.clearCookie('auth-token', cookieOptions);
 
             // Also set cookie with past expiry date for better compatibility
             res.cookie('auth-token', '', {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                path: '/',
+                ...cookieOptions,
                 expires: new Date(0)
             });
 
