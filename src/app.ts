@@ -28,7 +28,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Enhanced CORS configuration for better browser compatibility
+// Enhanced CORS configuration for better Safari compatibility
 const corsOptions = {
     origin: function (origin: string | undefined, callback: Function) {
         // Allow requests with no origin (like mobile apps or curl requests)
@@ -38,6 +38,8 @@ const corsOptions = {
             'https://law-funnel-client.vercel.app',
             'http://localhost:5173',
             'http://localhost:3000',
+            'http://127.0.0.1:5173',
+            'http://127.0.0.1:3000',
             process.env.CLIENT_URL
         ].filter(Boolean);
 
@@ -48,19 +50,24 @@ const corsOptions = {
             return callback(new Error('Not allowed by CORS'));
         }
     },
-    credentials: true, // Important: this allows cookies to be sent cross-domain
-    optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
-    // Additional headers for better Safari compatibility
-    exposedHeaders: ['set-cookie'],
+    credentials: true, // CRITICAL: this allows cookies to be sent cross-domain
+    optionsSuccessStatus: 200, // Some legacy browsers choke on 204
+    // Safari-specific headers
+    exposedHeaders: ['set-cookie', 'Set-Cookie'],
     allowedHeaders: [
         'Origin',
         'X-Requested-With',
         'Content-Type',
         'Accept',
         'Authorization',
-        'Cookie'
+        'Cookie',
+        'Set-Cookie',
+        'Access-Control-Allow-Credentials'
     ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    // Safari-specific settings
+    preflightContinue: false,
+    maxAge: 86400 // 24 hours
 };
 
 app.use(cors(corsOptions));

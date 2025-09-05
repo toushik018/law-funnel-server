@@ -9,15 +9,23 @@ import { UnauthorizedError } from '../errors';
  */
 export const authenticateToken = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     try {
-        // Try to get token from primary cookie first
-        let token = req.cookies['auth-token'];
+        // Try multiple cookie strategies for better browser compatibility
+        let token = req.cookies['auth-token']; // Primary cookie
 
-        // If primary cookie fails, try fallback cookie (for Safari compatibility)
+        // Safari fallback strategies
         if (!token) {
-            token = req.cookies['auth-token-fallback'];
+            token = req.cookies['auth-token-safari']; // Safari-specific cookie
         }
 
-        // If neither cookie is present, try Authorization header as last resort
+        if (!token) {
+            token = req.cookies['auth-token-fallback']; // Original fallback
+        }
+
+        if (!token) {
+            token = req.cookies['auth-token-dev']; // Development fallback
+        }
+
+        // Authorization header fallback (for manual testing)
         if (!token) {
             const authHeader = req.headers.authorization;
             if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -26,6 +34,14 @@ export const authenticateToken = (req: AuthenticatedRequest, res: Response, next
         }
 
         if (!token) {
+            // Enhanced debugging for Safari issues
+            const debugInfo = {
+                cookies: Object.keys(req.cookies || {}),
+                userAgent: req.headers['user-agent'],
+                origin: req.headers.origin,
+                host: req.headers.host
+            };
+            console.log('🚨 No token found. Debug info:', debugInfo);
             throw new UnauthorizedError('Access token required');
         }
 

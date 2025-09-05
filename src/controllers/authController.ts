@@ -168,32 +168,44 @@ export class AuthController {
 
             // Enhanced cookie configuration for better browser compatibility
             const isProduction = process.env.NODE_ENV === 'production';
+            const isDevelopment = !isProduction;
 
-            // Primary cookie configuration
+            // Primary cookie configuration with Safari-specific fixes
             const cookieOptions = {
-                httpOnly: true, // Cannot be accessed via JavaScript
-                secure: isProduction, // Use HTTPS in production, HTTP in development
-                sameSite: isProduction ? 'none' as const : 'lax' as const, // Cross-domain in production
+                httpOnly: true,
+                secure: isProduction, // Only secure in production
+                sameSite: isProduction ? 'none' as const : 'lax' as const,
                 maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-                path: '/', // Available on all paths
-                // Additional Safari compatibility
-                domain: isProduction ? undefined : undefined // Let browser decide
+                path: '/',
+                // Safari-specific fixes
+                domain: isProduction ? undefined : undefined // Let browser decide domain
             };
 
             // Set the primary auth cookie
             res.cookie('auth-token', result.token, cookieOptions);
 
-            // Fallback cookie for browsers with strict policies (like Safari)
-            // This uses less strict settings as a backup
-            const fallbackCookieOptions = {
+            // Safari fallback cookie with more permissive settings
+            const safariCookieOptions = {
                 httpOnly: true,
-                secure: isProduction,
+                secure: false, // Less strict for Safari compatibility
                 sameSite: 'lax' as const, // More permissive
                 maxAge: 7 * 24 * 60 * 60 * 1000,
                 path: '/'
             };
 
-            res.cookie('auth-token-fallback', result.token, fallbackCookieOptions);
+            res.cookie('auth-token-safari', result.token, safariCookieOptions);
+
+            // Development-specific fallback for localhost
+            if (isDevelopment) {
+                const devCookieOptions = {
+                    httpOnly: true,
+                    secure: false,
+                    sameSite: 'lax' as const,
+                    maxAge: 7 * 24 * 60 * 60 * 1000,
+                    path: '/'
+                };
+                res.cookie('auth-token-dev', result.token, devCookieOptions);
+            }
 
             // Return user data without token (token is in cookie)
             sendSuccess(res, { user: result.user }, 'Login successful');
@@ -263,30 +275,34 @@ export class AuthController {
         try {
             const isProduction = process.env.NODE_ENV === 'production';
 
-            const cookieOptions = {
-                httpOnly: true,
-                secure: isProduction,
-                sameSite: isProduction ? 'none' as const : 'lax' as const,
-                path: '/'
-            };
+            // Clear all possible cookie variants for comprehensive logout
+            const cookieNames = ['auth-token', 'auth-token-fallback', 'auth-token-safari', 'auth-token-dev'];
 
-            // Clear both primary and fallback cookies
-            res.clearCookie('auth-token', cookieOptions);
-            res.clearCookie('auth-token-fallback', {
-                ...cookieOptions,
-                sameSite: 'lax' as const
-            });
+            cookieNames.forEach(cookieName => {
+                // Clear with production settings
+                res.clearCookie(cookieName, {
+                    httpOnly: true,
+                    secure: isProduction,
+                    sameSite: isProduction ? 'none' as const : 'lax' as const,
+                    path: '/'
+                });
 
-            // Also set cookies with past expiry date for better compatibility
-            res.cookie('auth-token', '', {
-                ...cookieOptions,
-                expires: new Date(0)
-            });
+                // Clear with development settings
+                res.clearCookie(cookieName, {
+                    httpOnly: true,
+                    secure: false,
+                    sameSite: 'lax' as const,
+                    path: '/'
+                });
 
-            res.cookie('auth-token-fallback', '', {
-                ...cookieOptions,
-                sameSite: 'lax' as const,
-                expires: new Date(0)
+                // Set expired cookies for better compatibility
+                res.cookie(cookieName, '', {
+                    httpOnly: true,
+                    secure: false,
+                    sameSite: 'lax' as const,
+                    path: '/',
+                    expires: new Date(0)
+                });
             });
 
             sendSuccess(res, {}, 'Logout successful');
