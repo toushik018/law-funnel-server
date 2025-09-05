@@ -28,7 +28,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// CORS configuration
+// Enhanced CORS configuration for better browser compatibility
 const corsOptions = {
     origin: function (origin: string | undefined, callback: Function) {
         // Allow requests with no origin (like mobile apps or curl requests)
@@ -44,11 +44,23 @@ const corsOptions = {
         if (allowedOrigins.includes(origin)) {
             return callback(null, true);
         } else {
+            console.log(`CORS blocked origin: ${origin}`);
             return callback(new Error('Not allowed by CORS'));
         }
     },
     credentials: true, // Important: this allows cookies to be sent cross-domain
-    optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
+    optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
+    // Additional headers for better Safari compatibility
+    exposedHeaders: ['set-cookie'],
+    allowedHeaders: [
+        'Origin',
+        'X-Requested-With',
+        'Content-Type',
+        'Accept',
+        'Authorization',
+        'Cookie'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH']
 };
 
 app.use(cors(corsOptions));

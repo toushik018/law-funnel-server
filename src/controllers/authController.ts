@@ -166,16 +166,34 @@ export class AuthController {
             // Authenticate user
             const result = await UserService.loginUser({ email, password });
 
-            // Set JWT token as httpOnly cookie
+            // Enhanced cookie configuration for better browser compatibility
+            const isProduction = process.env.NODE_ENV === 'production';
+
+            // Primary cookie configuration
             const cookieOptions = {
                 httpOnly: true, // Cannot be accessed via JavaScript
-                secure: true, // Always use HTTPS in production (Vercel)
-                sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const, // Allow cross-domain in production
+                secure: isProduction, // Use HTTPS in production, HTTP in development
+                sameSite: isProduction ? 'none' as const : 'lax' as const, // Cross-domain in production
                 maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-                path: '/' // Available on all paths
+                path: '/', // Available on all paths
+                // Additional Safari compatibility
+                domain: isProduction ? undefined : undefined // Let browser decide
             };
 
+            // Set the primary auth cookie
             res.cookie('auth-token', result.token, cookieOptions);
+
+            // Fallback cookie for browsers with strict policies (like Safari)
+            // This uses less strict settings as a backup
+            const fallbackCookieOptions = {
+                httpOnly: true,
+                secure: isProduction,
+                sameSite: 'lax' as const, // More permissive
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+                path: '/'
+            };
+
+            res.cookie('auth-token-fallback', result.token, fallbackCookieOptions);
 
             // Return user data without token (token is in cookie)
             sendSuccess(res, { user: result.user }, 'Login successful');
@@ -243,19 +261,31 @@ export class AuthController {
      */
     static async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
+            const isProduction = process.env.NODE_ENV === 'production';
+
             const cookieOptions = {
                 httpOnly: true,
-                secure: true,
-                sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
+                secure: isProduction,
+                sameSite: isProduction ? 'none' as const : 'lax' as const,
                 path: '/'
             };
 
-            // Clear the auth-token cookie
+            // Clear both primary and fallback cookies
             res.clearCookie('auth-token', cookieOptions);
+            res.clearCookie('auth-token-fallback', {
+                ...cookieOptions,
+                sameSite: 'lax' as const
+            });
 
-            // Also set cookie with past expiry date for better compatibility
+            // Also set cookies with past expiry date for better compatibility
             res.cookie('auth-token', '', {
                 ...cookieOptions,
+                expires: new Date(0)
+            });
+
+            res.cookie('auth-token-fallback', '', {
+                ...cookieOptions,
+                sameSite: 'lax' as const,
                 expires: new Date(0)
             });
 

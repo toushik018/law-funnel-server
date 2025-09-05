@@ -27,15 +27,22 @@ export const legalQualificationValidation = [
         .withMessage('Contract situation is required')
         .isLength({ max: 1000 })
         .withMessage('Contract situation cannot exceed 1000 characters'),
-    body('fulfillmentDate')
-        .notEmpty()
-        .withMessage('Fulfillment date is required'),
-    body('invoiceWrittenDate')
-        .notEmpty()
-        .withMessage('Invoice written date is required'),
     body('invoiceSentDate')
         .notEmpty()
         .withMessage('Invoice sent date is required')
+        .isISO8601()
+        .withMessage('Invoice sent date must be a valid date')
+        .custom((value) => {
+            const invoiceDate = new Date(value);
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            if (invoiceDate > thirtyDaysAgo) {
+                throw new Error('Invoice sent date must be at least 30 days ago');
+            }
+
+            return true;
+        })
 ];
 
 /**
@@ -160,12 +167,10 @@ export class CaseController {
             }
 
             const { caseId } = req.params;
-            const { contractSituation, fulfillmentDate, invoiceWrittenDate, invoiceSentDate } = req.body;
+            const { contractSituation, invoiceSentDate } = req.body;
 
             const answersData = {
                 contractSituation,
-                fulfillmentDate,
-                invoiceWrittenDate,
                 invoiceSentDate
             };
 

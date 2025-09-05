@@ -2,12 +2,10 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 /**
  * Legal Qualification Answers Interface
- * Based on the 4 questions from the frontend
+ * Based on the 2 questions from the frontend
  */
 export interface ILegalQualificationAnswers {
     contractSituation: string; // What is the situation with the contract?
-    fulfillmentDate: string; // When was the agreed-upon product/service fulfilled?
-    invoiceWrittenDate: string; // When was the invoice written?
     invoiceSentDate: string; // When was the invoice sent?
     completedAt: Date;
 }
@@ -89,11 +87,9 @@ const CaseSchema: Schema = new Schema(
             maxlength: [200, 'Case title cannot exceed 200 characters']
         },
 
-        // Legal Qualification Answers - The 4 questions
+        // Legal Qualification Answers - The 2 questions
         legalQualificationAnswers: {
             contractSituation: { type: String, trim: true },
-            fulfillmentDate: { type: String },
-            invoiceWrittenDate: { type: String },
             invoiceSentDate: { type: String },
             completedAt: { type: Date }
         },

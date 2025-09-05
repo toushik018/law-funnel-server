@@ -3,13 +3,27 @@ import { AuthUtils, AuthenticatedRequest } from '../utils/auth';
 import { UnauthorizedError } from '../errors';
 
 /**
- * Authentication Middleware
+ * Authentication Middleware with Fallback Support
  * Protects routes by verifying JWT tokens from httpOnly cookies
+ * Includes fallback cookie support for Safari and strict browsers
  */
 export const authenticateToken = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     try {
-        // Get token from httpOnly cookie
-        const token = req.cookies['auth-token'];
+        // Try to get token from primary cookie first
+        let token = req.cookies['auth-token'];
+
+        // If primary cookie fails, try fallback cookie (for Safari compatibility)
+        if (!token) {
+            token = req.cookies['auth-token-fallback'];
+        }
+
+        // If neither cookie is present, try Authorization header as last resort
+        if (!token) {
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring(7);
+            }
+        }
 
         if (!token) {
             throw new UnauthorizedError('Access token required');

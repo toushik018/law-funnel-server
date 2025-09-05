@@ -129,8 +129,6 @@ export class CaseService {
         userId: string,
         answersData: {
             contractSituation: string;
-            fulfillmentDate: string;
-            invoiceWrittenDate: string;
             invoiceSentDate: string;
         }
     ): Promise<CaseResponse> {
