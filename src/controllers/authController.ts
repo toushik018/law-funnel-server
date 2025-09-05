@@ -151,7 +151,7 @@ export class AuthController {
     }
 
     /**
-     * Login user
+     * Login user - return token instead of setting cookies
      */
     static async login(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
@@ -166,49 +166,11 @@ export class AuthController {
             // Authenticate user
             const result = await UserService.loginUser({ email, password });
 
-            // Enhanced cookie configuration for better browser compatibility
-            const isProduction = process.env.NODE_ENV === 'production';
-            const isDevelopment = !isProduction;
-
-            // Primary cookie configuration with Safari-specific fixes
-            const cookieOptions = {
-                httpOnly: true,
-                secure: isProduction, // Only secure in production
-                sameSite: isProduction ? 'none' as const : 'lax' as const,
-                maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-                path: '/',
-                // Safari-specific fixes
-                domain: isProduction ? undefined : undefined // Let browser decide domain
-            };
-
-            // Set the primary auth cookie
-            res.cookie('auth-token', result.token, cookieOptions);
-
-            // Safari fallback cookie with more permissive settings
-            const safariCookieOptions = {
-                httpOnly: true,
-                secure: false, // Less strict for Safari compatibility
-                sameSite: 'lax' as const, // More permissive
-                maxAge: 7 * 24 * 60 * 60 * 1000,
-                path: '/'
-            };
-
-            res.cookie('auth-token-safari', result.token, safariCookieOptions);
-
-            // Development-specific fallback for localhost
-            if (isDevelopment) {
-                const devCookieOptions = {
-                    httpOnly: true,
-                    secure: false,
-                    sameSite: 'lax' as const,
-                    maxAge: 7 * 24 * 60 * 60 * 1000,
-                    path: '/'
-                };
-                res.cookie('auth-token-dev', result.token, devCookieOptions);
-            }
-
-            // Return user data without token (token is in cookie)
-            sendSuccess(res, { user: result.user }, 'Login successful');
+            // Return user data with token (no cookies)
+            sendSuccess(res, {
+                user: result.user,
+                token: result.token
+            }, 'Login successful');
         } catch (error) {
             next(error);
         }
@@ -269,42 +231,10 @@ export class AuthController {
     }
 
     /**
-     * Logout user by clearing the httpOnly cookie
+     * Logout user - simple response (client handles token removal)
      */
     static async logout(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
-            const isProduction = process.env.NODE_ENV === 'production';
-
-            // Clear all possible cookie variants for comprehensive logout
-            const cookieNames = ['auth-token', 'auth-token-fallback', 'auth-token-safari', 'auth-token-dev'];
-
-            cookieNames.forEach(cookieName => {
-                // Clear with production settings
-                res.clearCookie(cookieName, {
-                    httpOnly: true,
-                    secure: isProduction,
-                    sameSite: isProduction ? 'none' as const : 'lax' as const,
-                    path: '/'
-                });
-
-                // Clear with development settings
-                res.clearCookie(cookieName, {
-                    httpOnly: true,
-                    secure: false,
-                    sameSite: 'lax' as const,
-                    path: '/'
-                });
-
-                // Set expired cookies for better compatibility
-                res.cookie(cookieName, '', {
-                    httpOnly: true,
-                    secure: false,
-                    sameSite: 'lax' as const,
-                    path: '/',
-                    expires: new Date(0)
-                });
-            });
-
             sendSuccess(res, {}, 'Logout successful');
         } catch (error) {
             next(error);

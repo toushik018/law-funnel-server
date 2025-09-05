@@ -1,7 +1,6 @@
 import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
@@ -28,7 +27,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Enhanced CORS configuration for better Safari compatibility
+// Simplified CORS configuration for token-based authentication
 const corsOptions = {
     origin: function (origin: string | undefined, callback: Function) {
         // Allow requests with no origin (like mobile apps or curl requests)
@@ -50,22 +49,16 @@ const corsOptions = {
             return callback(new Error('Not allowed by CORS'));
         }
     },
-    credentials: true, // CRITICAL: this allows cookies to be sent cross-domain
+    credentials: true, // Keep this for compatibility with existing fetch calls
     optionsSuccessStatus: 200, // Some legacy browsers choke on 204
-    // Safari-specific headers
-    exposedHeaders: ['set-cookie', 'Set-Cookie'],
     allowedHeaders: [
         'Origin',
         'X-Requested-With',
         'Content-Type',
         'Accept',
-        'Authorization',
-        'Cookie',
-        'Set-Cookie',
-        'Access-Control-Allow-Credentials'
+        'Authorization'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    // Safari-specific settings
     preflightContinue: false,
     maxAge: 86400 // 24 hours
 };
@@ -75,9 +68,6 @@ app.use(cors(corsOptions));
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Cookie parsing middleware
-app.use(cookieParser());
 
 // Database connection middleware for serverless
 app.use(async (req, res, next) => {

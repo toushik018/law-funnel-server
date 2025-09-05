@@ -3,40 +3,24 @@ import { AuthUtils, AuthenticatedRequest } from '../utils/auth';
 import { UnauthorizedError } from '../errors';
 
 /**
- * Authentication Middleware with Fallback Support
- * Protects routes by verifying JWT tokens from httpOnly cookies
- * Includes fallback cookie support for Safari and strict browsers
+ * Authentication Middleware with Bearer Token Support
+ * Protects routes by verifying JWT tokens from Authorization header
  */
 export const authenticateToken = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     try {
-        // Try multiple cookie strategies for better browser compatibility
-        let token = req.cookies['auth-token']; // Primary cookie
+        // Get token from Authorization header
+        const authHeader = req.headers.authorization;
+        let token: string | undefined;
 
-        // Safari fallback strategies
-        if (!token) {
-            token = req.cookies['auth-token-safari']; // Safari-specific cookie
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7);
         }
 
         if (!token) {
-            token = req.cookies['auth-token-fallback']; // Original fallback
-        }
-
-        if (!token) {
-            token = req.cookies['auth-token-dev']; // Development fallback
-        }
-
-        // Authorization header fallback (for manual testing)
-        if (!token) {
-            const authHeader = req.headers.authorization;
-            if (authHeader && authHeader.startsWith('Bearer ')) {
-                token = authHeader.substring(7);
-            }
-        }
-
-        if (!token) {
-            // Enhanced debugging for Safari issues
+            // Enhanced debugging for token issues
             const debugInfo = {
-                cookies: Object.keys(req.cookies || {}),
+                hasAuthHeader: !!authHeader,
+                authHeaderValue: authHeader ? authHeader.substring(0, 20) + '...' : 'none',
                 userAgent: req.headers['user-agent'],
                 origin: req.headers.origin,
                 host: req.headers.host
