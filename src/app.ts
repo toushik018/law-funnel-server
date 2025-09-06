@@ -42,10 +42,20 @@ const corsOptions = {
             process.env.CLIENT_URL
         ].filter(Boolean);
 
+        // Allow all localhost origins during development
+        if (process.env.NODE_ENV !== 'production' && origin.includes('localhost')) {
+            return callback(null, true);
+        }
+
         if (allowedOrigins.includes(origin)) {
             return callback(null, true);
         } else {
             console.log(`CORS blocked origin: ${origin}`);
+            // In development, be more permissive
+            if (process.env.NODE_ENV !== 'production') {
+                console.log('Development mode: allowing origin anyway');
+                return callback(null, true);
+            }
             return callback(new Error('Not allowed by CORS'));
         }
     },
@@ -56,6 +66,11 @@ const corsOptions = {
         'X-Requested-With',
         'Content-Type',
         'Accept',
+        'Authorization',
+        'Cache-Control',
+        'Pragma'
+    ],
+    exposedHeaders: [
         'Authorization'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -64,6 +79,24 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Additional CORS headers as fallback
+app.use((req, res, next) => {
+    // Set CORS headers explicitly for extra safety
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS,PATCH');
+    res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,Cache-Control,Pragma');
+    res.header('Access-Control-Expose-Headers', 'Authorization');
+
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
+    }
+
+    next();
+});
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));

@@ -233,7 +233,7 @@ export class UserService {
 
         // Validate phone number format if provided (basic validation)
         if (phone && phone.trim()) {
-            const phoneRegex = /^[+]?[0-9\s\-\(\)]{7,20}$/;
+            const phoneRegex = /^[+]?[0-9\s\-\(\)]{7,25}$/;
             if (!phoneRegex.test(phone.trim())) {
                 throw new ValidationError('Invalid phone number format');
             }

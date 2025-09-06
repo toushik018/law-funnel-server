@@ -84,9 +84,9 @@ export const profileUpdateValidation = [
     body('phone')
         .optional()
         .trim()
-        .isLength({ max: 20 })
-        .withMessage('Phone number cannot exceed 20 characters')
-        .matches(/^[+]?[0-9\s\-\(\)]{7,20}$/)
+        .isLength({ max: 25 })
+        .withMessage('Phone number cannot exceed 25 characters')
+        .matches(/^[+]?[0-9\s\-\(\)]{7,25}$/)
         .withMessage('Invalid phone number format'),
 
     body('bankName')

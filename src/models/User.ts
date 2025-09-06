@@ -78,7 +78,7 @@ const UserSchema: Schema = new Schema(
         phone: {
             type: String,
             trim: true,
-            maxlength: [20, 'Phone number cannot exceed 20 characters']
+            maxlength: [25, 'Phone number cannot exceed 25 characters']
         },
 
         // Banking Information
